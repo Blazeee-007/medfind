@@ -1,0 +1,25 @@
+# Secrets
+.env
+*.pfx
+*.p12
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/.history/
+
+# Node
+node_modules/
+dist/
+
+# Docker volumes
+postgres_data/
+
+# Rider
+.idea/
+
+# macOS
+.DS_Store

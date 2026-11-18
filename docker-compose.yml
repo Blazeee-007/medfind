@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    environment:
+      POSTGRES_DB: medfind
+      POSTGRES_USER: medfind
+      POSTGRES_PASSWORD: medfind
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medfind -d medfind"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: src/MedFind.Api/Dockerfile
+    restart: on-failure:5
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=medfind;Username=medfind;Password=medfind"
+      Redis__Connection: "redis:6379"
+      Jwt__Key: "${JWT_KEY:-medfind-dev-secret-key-must-be-32-chars}"
+      Jwt__Issuer: medfind
+      Jwt__Audience: medfind
+      PharmacyRegistrationCode: "${PHARMACY_CODE:-MEDFIND-ADMIN-2024}"
+      MEDFIND_STALE_AFTER_MINUTES: "60"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

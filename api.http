@@ -1,0 +1,160 @@
+### MedFind API — Manual test harness
+### Use with VS Code REST Client extension
+### Variables: set @base and @token after login
+
+@base = http://localhost:8080
+@token = YOUR_JWT_HERE
+
+# ─────────────────────────────────────────
+# 1. REGISTER — Patient
+# ─────────────────────────────────────────
+POST {{base}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "Test@1234",
+  "fullName": "Demo User",
+  "role": "Patient",
+  "pharmacyCode": null
+}
+
+###
+
+# ─────────────────────────────────────────
+# 2. REGISTER — PharmacyAdmin (with code)
+# ─────────────────────────────────────────
+POST {{base}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "pharma@example.com",
+  "password": "Admin@1234",
+  "fullName": "Pharmacy Owner",
+  "role": "PharmacyAdmin",
+  "pharmacyCode": "MEDFIND-ADMIN-2024"
+}
+
+###
+
+# ─────────────────────────────────────────
+# 3. LOGIN
+# ─────────────────────────────────────────
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@medfind.dev",
+  "password": "Admin@2024"
+}
+
+###
+
+# ─────────────────────────────────────────
+# 4. NEARBY SEARCH (Indiranagar, Bengaluru)
+# ─────────────────────────────────────────
+GET {{base}}/api/pharmacies/nearby?lat=12.9784&lng=77.6408&radiusKm=5&medicine=paracetamol&page=1&pageSize=10
+
+###
+
+# 4b. Nearby — no medicine filter, all in-stock
+GET {{base}}/api/pharmacies/nearby?lat=12.9757&lng=77.6072&radiusKm=3
+
+###
+
+# ─────────────────────────────────────────
+# 5. PHARMACY DETAIL (replace with real ID)
+# ─────────────────────────────────────────
+GET {{base}}/api/pharmacies/00000000-0000-0000-0000-000000000000
+
+###
+
+# ─────────────────────────────────────────
+# 6. PHARMACY AVAILABILITY (cached 30s)
+# ─────────────────────────────────────────
+GET {{base}}/api/pharmacies/00000000-0000-0000-0000-000000000000/availability
+
+###
+
+# ─────────────────────────────────────────
+# 7. MEDICINE SEARCH (autocomplete)
+# ─────────────────────────────────────────
+GET {{base}}/api/medicines?q=paracet
+
+###
+
+# ─────────────────────────────────────────
+# 8. ADMIN — View own inventory
+# ─────────────────────────────────────────
+GET {{base}}/api/pharmacy/inventory
+Authorization: Bearer {{token}}
+
+###
+
+# ─────────────────────────────────────────
+# 9. ADMIN — Update stock (replace medicineId)
+# Side effect: invalidates Redis cache
+# ─────────────────────────────────────────
+PUT {{base}}/api/pharmacy/inventory/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "quantity": 42
+}
+
+###
+
+# ─────────────────────────────────────────
+# 10. ADMIN — Add medicine to inventory
+# ─────────────────────────────────────────
+POST {{base}}/api/pharmacy/inventory
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "medicineId": "00000000-0000-0000-0000-000000000000",
+  "quantity": 0
+}
+
+###
+
+# ─────────────────────────────────────────
+# 11. HEALTH
+# ─────────────────────────────────────────
+GET {{base}}/health
+
+###
+
+# 11b. Cache metrics
+GET {{base}}/health/cache
+
+###
+
+# ─────────────────────────────────────────
+# ERROR CASES
+# ─────────────────────────────────────────
+
+# 400 — invalid lat/lng
+GET {{base}}/api/pharmacies/nearby?lat=999&lng=0&radiusKm=5
+
+###
+
+# 400 — radiusKm too large
+GET {{base}}/api/pharmacies/nearby?lat=12.97&lng=77.64&radiusKm=99
+
+###
+
+# 401 — missing token
+GET {{base}}/api/pharmacy/inventory
+
+###
+
+# 400 — negative quantity
+PUT {{base}}/api/pharmacy/inventory/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "quantity": -1
+}
